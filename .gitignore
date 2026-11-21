@@ -1,0 +1,9 @@
+.DS_Store
+/build/
+*.xlsx
+*.xls
+*.xlsm
+*.draft
+*.dmg
+*.pkg
+*.app/

@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Registro de calificaciones</title>
+<style>
+:root{font:15px/1.45 system-ui,-apple-system,sans-serif;color:#182a2e;background:#f1f5f2;--ink:#182a2e;--muted:#506366;--line:#d7e2dc;--accent:#146052;--mint:#e4f1ea}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit;color:inherit}button{cursor:pointer}button:disabled{cursor:default;opacity:.55}button,input,select{border:1px solid #acbfba;border-radius:8px;background:#fff;padding:.55rem .75rem}input:focus,select:focus,button:focus-visible,summary:focus-visible{outline:2px solid #187b69;outline-offset:2px}button:hover:not(:disabled){background:var(--mint)}button.primary{background:var(--accent);border-color:var(--accent);color:white;font-weight:650}button.primary:hover:not(:disabled){background:#0d4a3f}button.subtle{padding:.3rem .6rem;background:transparent;border-color:transparent}.danger{color:#973a33}.muted,small{color:var(--muted)}strong{font-weight:720}[hidden]{display:none!important}
+header{background:#143c37;color:#fff;padding:.65rem clamp(1rem,5vw,5rem)}header .bar{max-width:1320px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap}.brand{display:flex;align-items:center;gap:.6rem;font-weight:700;letter-spacing:.025em}.mark{display:grid;place-items:center;width:28px;height:28px;background:#cce9d9;color:#143c37;border-radius:6px;font-size:17px}header small{color:#cce9d9}
+main{max-width:1390px;margin:0 auto;padding:clamp(1rem,4vw,3rem)}.title{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem}h1,h2,p{margin:0}h1{font-size:clamp(1.9rem,4vw,3.35rem);font-weight:740;line-height:1.06;letter-spacing:-.055em}h2{font-size:1.12rem;letter-spacing:-.012em}.title p{margin-top:.6rem;color:var(--muted)}.tools{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}.panel{background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:1rem}.panel-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.6rem;padding:1rem 1.15rem}.panel-body{padding:0 1.15rem 1rem}.empty{margin-top:1.2rem;padding:2rem;max-width:660px}.empty p{margin:.45rem 0 1.2rem}.empty small{display:block;margin-top:.75rem}
+.file-name{overflow-wrap:anywhere}.pill{border-radius:999px;background:var(--mint);color:#18493e;padding:.3rem .7rem;font-size:.84rem;font-weight:650;white-space:nowrap}.pill.caution{background:#f8edce;color:#684912}.pill.bad{background:#fbe7e2;color:#853128}.fields{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem 1rem}.fields label,.rubric label{display:flex;flex-direction:column;gap:.25rem;font-size:.85rem;color:var(--muted);font-weight:620}.fields input,.fields select{max-width:100%;width:auto}.fields .short{width:7.5rem}.fields .wide{min-width:min(100%,12rem)}.file-row{flex-wrap:wrap}.file-row p{margin:0}details summary{cursor:pointer;font-weight:650;color:var(--accent)}details .fields{margin-top:.7rem}.note{margin:.75rem 0 0;font-size:.88rem;color:var(--muted)}.message{margin:.8rem 0;padding:.65rem .85rem;background:var(--mint);border-radius:7px;color:#194a3e}.message.error{background:#fbe7e2;color:#853128}
+.rubrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,170px),1fr));gap:.7rem}.rubric{min-width:0;padding:.65rem .7rem;border:1px solid var(--line);border-radius:9px;background:#f8faf8}.rubric .remove-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;font-size:.84rem;color:var(--muted)}.rubric input{min-width:0;width:100%;padding:.43rem .5rem}.rubric label+label{margin-top:.45rem}
+.sheet{overflow:auto;max-height:64vh;border-top:1px solid var(--line);border-radius:0 0 14px 14px}table{border-collapse:separate;border-spacing:0;min-width:100%;width:max-content;font-variant-numeric:tabular-nums}th,td{text-align:center;padding:.5rem .62rem;border-bottom:1px solid var(--line);vertical-align:middle}thead th{background:#e9f0eb;position:sticky;top:0;z-index:2;max-width:9rem;overflow-wrap:anywhere;font-size:.88rem}thead th:first-child{z-index:3;background:#e9f0eb}tbody th{text-align:left;background:#fff;font-weight:590}th:first-child{position:sticky;left:0;text-align:left;min-width:11.75rem;max-width:15rem;z-index:1;border-right:1px solid var(--line)}tbody tr:nth-child(even) th,tbody tr:nth-child(even) td{background:#f7faf7}thead small,.points{display:block;font-size:.75rem;white-space:nowrap}.points{color:var(--muted);margin-top:.17rem}.grade{width:4.65rem;text-align:center;padding:.36rem .25rem;font-variant-numeric:tabular-nums}.grade[aria-invalid=true],.rubric input[aria-invalid=true]{border-color:#a44035;background:#fff4f1}.total{min-width:6.1rem;font-weight:740;color:#174a40}.existing{white-space:nowrap}.total small{display:block;font-weight:500;font-size:.72rem;white-space:nowrap}
+@media(max-width:600px){header small{display:none}.panel-head,.panel-body{padding-inline:.75rem}.empty{padding:1.15rem}.title{align-items:start}.sheet{max-height:68vh}th:first-child{min-width:8rem;max-width:9rem}}
+</style>
+<link rel="stylesheet" href="attendance.css">
+</head>
+<body>
+<header><div class="bar"><span class="brand"><img class="brand-icon" src="Docencia.png" alt=""> Docencia</span><small id="save-status" role="status">Guardado en esta Mac</small></div></header>
+<main>
+<div class="title">
+  <div><h1>Asistencia y calificaciones</h1><p>Pasa lista en clase y prepara el Excel para Servicios Escolares.</p></div>
+  <div class="tools" id="export-tools" hidden><button type="button" id="preview-open">Vista previa</button><button type="button" id="export" class="primary">Descargar Excel</button></div>
+</div>
+<div id="notice" class="message" role="status" aria-live="polite" hidden></div>
+<section class="panel lists" aria-label="Listas de alumnos">
+  <div class="panel-head"><label id="saved-label" hidden>Listas guardadas<select id="saved-lists"></select></label>
+  <button type="button" id="choose">+ Importar lista de Excel</button></div>
+  <details class="storage panel-body" id="storage" hidden><summary>Carpeta de datos</summary>
+    <p id="folder-path" class="folder-path"></p>
+    <div class="tools"><button type="button" id="reveal-folder">Abrir en Finder</button>
+      <button type="button" id="choose-folder">Cambiar carpeta…</button>
+      <button type="button" id="archive-list" hidden>Archivar lista abierta…</button>
+    </div>
+    <div id="archived-controls" class="fields" hidden>
+      <label>Listas archivadas<select id="archived-lists"></select></label><button type="button" id="restore-list">Restaurar lista</button>
+    </div>
+    <p class="note">Una lista archivada se puede restaurar aquí. Al cambiar de carpeta, Docencia conserva la copia anterior.</p>
+  </details>
+</section>
+<section id="welcome" class="panel empty">
+  <h2>Carga tu lista institucional</h2>
+  <p>Selecciona el Excel del grupo para importar los nombres y ubicar la columna de calificación.</p>
+  <small>Podrás volver a abrir cada lista desde la app.</small>
+</section>
+<input type="file" id="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+<div id="workspace" hidden>
+  <section class="panel" aria-labelledby="format-label">
+    <div class="panel-head"><div><h2 id="format-label">Materia y grupo</h2><p class="muted file-name" id="filename"></p></div><button type="button" id="new-record">+ Nuevo registro</button></div>
+    <div class="panel-body">
+    <div class="fields file-row">
+      <label>Hoja de la lista<select id="sheet-name"></select></label>
+      <label>Registro guardado<select id="record"></select></label>
+    </div>
+    <p class="note" id="mapping-line"></p>
+    <details id="mapping"><summary>Ajustar columnas y filas</summary>
+      <form class="fields" id="mapping-form">
+        <label>Columna de nombres<input id="name-col" class="short" maxlength="3" required placeholder="C"></label>
+        <label>Columna de calificación<input id="grade-col" class="short" maxlength="3" placeholder="Opcional"></label>
+        <label>Primera fila<input id="first-row" class="short" type="number" min="1" max="1048576" step="1" required></label>
+        <label>Última fila<input id="last-row" class="short" type="number" min="1" max="1048576" step="1" required></label>
+        <button type="submit">Aplicar rango</button>
+      </form>
+    </details>
+    <div class="fields" id="official-fields" hidden style="margin-top:.8rem">
+      <label>Materia<input id="record-name" class="wide" maxlength="80" placeholder="Nombre de la asignatura"></label>
+      <label>Grado o grupo<input id="group" class="wide" maxlength="80" placeholder="Como aparece en la lista"></label>
+      <label>Periodo<select id="period"><option value="">Sin definir</option><option value="1">Primer parcial</option><option value="2">Segundo parcial</option><option value="3">Tercer parcial</option></select></label>
+      <label id="teacher-label">Docente<input id="teacher" class="wide" maxlength="100" placeholder="Como en la plantilla"></label>
+    </div>
+    </div>
+  </section>
+  <nav id="view-switch" class="switcher" aria-label="Sección del registro" hidden>
+    <button type="button" id="show-attendance" aria-pressed="true">Asistencia diaria</button>
+    <button type="button" id="show-grades" aria-pressed="false">Calificaciones</button>
+  </nav>
+  <section id="attendance" class="panel" hidden>
+    <div class="panel-head"><div><h2>Pase de lista</h2><p id="attendance-summary" class="muted"></p></div>
+    <button type="button" class="primary" id="today">Pasar lista hoy</button></div>
+    <div class="panel-body fields" id="session-controls">
+      <label>Sesión<select id="sessions"></select></label>
+      <label>Fecha<input type="date" id="session-date"></label>
+      <button type="button" id="add-session">+ Agregar día</button>
+      <button type="button" id="all-present">Marcar pendientes como presentes</button>
+    </div>
+    <div class="sheet" tabindex="0" aria-label="Lista de asistencia"><table id="attendance-grid"></table></div>
+    <div class="panel-body"><p class="note">Pulsa Presente o Falta para cada alumno. Vuelve a pulsar la opción marcada para dejarla pendiente.</p></div>
+  </section>
+  <section id="evaluation" hidden>
+    <div class="panel">
+      <div class="panel-head"><h2>Apartados de evaluación</h2><div class="tools"><span id="weight-summary" class="pill"></span><button type="button" id="add">+ Agregar apartado</button></div></div>
+      <div class="panel-body"><div class="fields grade-options">
+      <label>Escala de salida<select id="scale"><option value="100">Sobre 100</option><option value="10">Sobre 10</option></select></label>
+      <label>Decimales<select id="decimals"><option>2</option><option>1</option><option>0</option></select></label>
+      </div><div id="rubrics" class="rubrics"></div><p class="note">Puntos obtenidos = calificación ÷ 100 × puntos del apartado. Por ejemplo, 80 en un apartado que vale 20 aporta 16 puntos.</p></div>
+    </div>
+    <section class="panel" aria-labelledby="grades-label">
+      <div class="panel-head"><div><h2 id="grades-label">Captura de calificaciones</h2><p class="note">Puedes pegar una columna o un bloque desde Excel. Escribe 0 para una actividad sin puntos.</p></div><span id="progress" class="pill" role="status"></span></div>
+      <div class="sheet" tabindex="0" aria-label="Tabla de calificaciones"><table id="grades"></table></div>
+      <div class="panel-body"><p class="note" id="export-note"></p></div>
+    </section>
+  </section>
+</div>
+<dialog id="preview" aria-labelledby="preview-title">
+  <div class="panel-head"><div><h2 id="preview-title">Vista previa del Excel</h2><p class="muted" id="preview-name"></p></div>
+    <form method="dialog"><button type="submit">Cerrar</button></form>
+  </div>
+  <div class="panel-body">
+    <div class="tools" id="preview-tabs"><button type="button" id="preview-official" aria-pressed="true">Hoja institucional</button><button type="button" id="preview-detail" aria-pressed="false">Asistencia diaria</button></div>
+    <p class="note" id="preview-note"></p>
+  </div>
+  <div class="sheet" tabindex="0" aria-label="Datos de la hoja de Excel"><table id="preview-grid"></table></div>
+</dialog>
+</main>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const element = (tag, value = "", className = "") => {
+  const node = document.createElement(tag);
+  node.textContent = value;
+  if (className) node.className = className;
+  return node;
+};
+const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const format = new Intl.NumberFormat("es-MX", {maximumFractionDigits: 2});
+const localPrefix = "docencia.calificaciones.v1.";
+let book, sheet, data, record, students = [];
+let rows = [];
+
+function notice(message = "", error = false) {
+  $("notice").textContent = message;
+  $("notice").classList.toggle("error", error);
+  $("notice").hidden = !message;
+}
+
+const crcTable = Uint32Array.from({length: 256}, (_, index) => {
+  for (let bit = 0; bit < 8; bit++) index = index & 1 ? 0xedb88320 ^ (index >>> 1) : index >>> 1;
+  return index;
+});
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) crc = crcTable[(crc ^ byte) & 255] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+class Zip {
+  constructor(bytes) {
+    const view = new DataView(bytes.buffer);
+    let end = bytes.length - 22;
+    while (end >= Math.max(0, bytes.length - 65557)) {
+      if (view.getUint32(end, true) === 0x06054b50 && end + 22 + view.getUint16(end + 20, true) === bytes.length) break;
+      end--;
+    }
+    if (end < Math.max(0, bytes.length - 65557)) throw Error("El archivo no es un Excel .xlsx válido o está cifrado.");
+    const count = view.getUint16(end + 10, true);
+    let offset = view.getUint32(end + 16, true);
+    if (count === 65535 || view.getUint16(end + 4, true) || view.getUint16(end + 6, true)) throw Error("Este tipo de archivo ZIP no es compatible.");
+    this.entries = new Map();
+    for (let index = 0; index < count; index++) {
+      if (view.getUint32(offset, true) !== 0x02014b50) throw Error("La estructura del Excel está dañada.");
+      const flags = view.getUint16(offset + 8, true);
+      const method = view.getUint16(offset + 10, true);
+      const date = view.getUint32(offset + 12, true);
+      const crc = view.getUint32(offset + 16, true);
+      const length = view.getUint32(offset + 20, true);
+      const size = view.getUint32(offset + 24, true);
+      const nameLength = view.getUint16(offset + 28, true);
+      const local = view.getUint32(offset + 42, true);
+      const name = decoder.decode(bytes.subarray(offset + 46, offset + 46 + nameLength));
+      if (flags & 1 || ![0, 8].includes(method) || view.getUint32(local, true) !== 0x04034b50) throw Error("El Excel utiliza compresión incompatible o cifrado.");
+      const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+      if (start + length > bytes.length || this.entries.has(name)) throw Error("La estructura del Excel está dañada.");
+      this.entries.set(name, {method, date, crc, size, packed: bytes.subarray(start, start + length)});
+      offset += 46 + nameLength + view.getUint16(offset + 30, true) + view.getUint16(offset + 32, true);
+    }
+  }
+
+  async xml(path) {
+    const entry = this.entries.get(path);
+    if (!entry || entry.size > 25 * 1024 * 1024) throw Error("Falta una parte del Excel o supera el tamaño admitido.");
+    let bytes = entry.packed;
+    if (entry.method === 8) {
+      const reader = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+      bytes = new Uint8Array(entry.size);
+      let offset = 0;
+      for (;;) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        if (offset + value.length > bytes.length) {
+          await reader.cancel();
+          throw Error("Una parte del Excel tiene un tamaño inválido.");
+        }
+        bytes.set(value, offset);
+        offset += value.length;
+      }
+    }
+    if (bytes.length !== entry.size || crc32(bytes) !== entry.crc) throw Error("Una parte del Excel está dañada.");
+    const doc = new DOMParser().parseFromString(decoder.decode(bytes), "application/xml");
+    if (doc.getElementsByTagName("parsererror").length || doc.doctype) throw Error("El XML del Excel es inválido.");
+    return doc;
+  }
+
+  withChanges(changes) {
+    const parts = [], directory = [];
+    let offset = 0, centralSize = 0;
+    const entries = new Map(this.entries);
+    for (const name of changes.keys()) if (!entries.has(name)) entries.set(name, {date: 0x00210000});
+    for (const [filename, original] of entries) {
+      const replacement = changes.has(filename) ? encoder.encode(changes.get(filename)) : null;
+      const item = replacement ? {...original, method: 0, packed: replacement, size: replacement.length, crc: crc32(replacement)} : original;
+      const name = encoder.encode(filename);
+      const local = new DataView(new ArrayBuffer(30));
+      local.setUint32(0, 0x04034b50, true);
+      local.setUint16(4, 20, true);
+      local.setUint16(6, 0x0800, true);
+      local.setUint16(8, item.method, true);
+      local.setUint32(10, item.date, true);
+      local.setUint32(14, item.crc, true);
+      local.setUint32(18, item.packed.length, true);
+      local.setUint32(22, item.size, true);
+      local.setUint16(26, name.length, true);
+      const central = new DataView(new ArrayBuffer(46));
+      central.setUint32(0, 0x02014b50, true);
+      central.setUint16(4, 20, true);
+      new Uint8Array(central.buffer, 6, 24).set(new Uint8Array(local.buffer, 4, 24));
+      central.setUint32(42, offset, true);
+      parts.push(local.buffer, name, item.packed);
+      directory.push(central.buffer, name);
+      offset += 30 + name.length + item.packed.length;
+      centralSize += 46 + name.length;
+    }
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, entries.size, true);
+    end.setUint16(10, entries.size, true);
+    end.setUint32(12, centralSize, true);
+    end.setUint32(16, offset, true);
+    return new Blob([...parts, ...directory, end.buffer], {type: mime});
+  }
+}
+
+const tags = (node, name) => [...node.getElementsByTagNameNS(node.namespaceURI || node.documentElement.namespaceURI, name)];
+const child = (node, name) => [...node.children].find(c => c.localName === name);
+const normal = value => value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toUpperCase().replace(/[^A-Z0-9 ]/g, "").trim();
+const col = ref => ref.match(/^[A-Z]+/)?.[0] ?? "";
+const colIndex = s => [...s].reduce((number, letter) => number * 26 + letter.charCodeAt(0) - 64, 0);
+const richText = node => tags(node, "t").filter(t => t.parentElement.localName !== "rPh").map(t => t.textContent).join("");
+function targetPath(base, target) {
+  const parts = [];
+  for (const segment of (target.startsWith("/") ? target : base + "/" + target).split("/")) {
+    if (segment === "..") parts.pop();
+    else if (segment && segment !== ".") parts.push(segment);
+  }
+  return parts.join("/");
+}
+
+async function openBook(file) {
+  if (file.size > 35 * 1024 * 1024) throw Error("Selecciona un Excel de hasta 35 MB.");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const zip = new Zip(bytes);
+  const workbook = await zip.xml("xl/workbook.xml");
+  const rels = tags(await zip.xml("xl/_rels/workbook.xml.rels"), "Relationship");
+  const internal = rels.filter(r => r.getAttribute("TargetMode") !== "External");
+  const stringsRel = internal.find(r => r.getAttribute("Type").endsWith("/sharedStrings"));
+  const styleRel = internal.find(r => r.getAttribute("Type").endsWith("/styles"));
+  const strings = stringsRel ? tags(await zip.xml(targetPath("xl", stringsRel.getAttribute("Target"))), "si").map(richText) : [];
+  const sheets = tags(workbook, "sheet").flatMap(node => {
+    const relation = [...node.attributes].find(attr => attr.localName === "id")?.value;
+    const rel = internal.find(r => r.getAttribute("Id") === relation && r.getAttribute("Type").endsWith("/worksheet"));
+    return rel && !["hidden", "veryHidden"].includes(node.getAttribute("state")) ?
+      [{name: node.getAttribute("name"), path: targetPath("xl", rel.getAttribute("Target"))}] : [];
+  });
+  if (!sheets.length) throw Error("El Excel no contiene hojas de cálculo visibles.");
+  const styles = styleRel ? targetPath("xl", styleRel.getAttribute("Target")) : null;
+  const date1904 = ["1", "true"].includes(tags(workbook, "workbookPr")[0]?.getAttribute("date1904"));
+  return {zip, sheets, strings, styles, date1904, name: file.name, key: localPrefix + bytes.length + "." + crc32(bytes)};
+}
+
+async function openSheet(workbook, entry) {
+  const doc = await workbook.zip.xml(entry.path);
+  const rowNodes = new Map(tags(doc, "row").map(row => [Number(row.getAttribute("r")), row]));
+  const cells = new Map(tags(doc, "c").map(cell => [cell.getAttribute("r"), cell]));
+  const merged = tags(doc, "mergeCell").map(node => node.getAttribute("ref").split(":"));
+  function value(ref) {
+    const cell = cells.get(ref);
+    if (!cell) return "";
+    const type = cell.getAttribute("t");
+    const raw = child(cell, "v")?.textContent ?? "";
+    if (type === "s") return workbook.strings[Number(raw)] ?? "";
+    if (type === "inlineStr") return richText(cell);
+    return raw;
+  }
+  const heading = [...rowNodes].find(([, row]) => {
+    const labels = [...row.children].map(c => normal(value(c.getAttribute("r"))));
+    return labels.some(isName) && labels.some(isGrade);
+  });
+  const nameHeading = heading ?? [...rowNodes].find(([, row]) =>
+    [...row.children].some(c => isName(normal(value(c.getAttribute("r"))))));
+  const official = normal(value("C5")) === "NOMBRES" && normal(value("AB5")) === "CALIF" &&
+    normal(value("B3")).startsWith("MAESTRO") && normal(value("S3")) === "ASIGNATURA";
+  const attendanceLayout = official && normal(value("D5")) === "ASISTENCIA" && normal(value("AA5")) === "TOTAL FALTAS";
+  const proposed = nameHeading ? suggestMapping(nameHeading[0], nameHeading[1]) : null;
+  return {entry, rowNodes, cells, merged, value, official, attendanceLayout, proposed};
+
+  function suggestMapping(index, row) {
+    const header = [...row.children];
+    const find = predicate => col(header.find(c => predicate(normal(value(c.getAttribute("r")))))?.getAttribute("r") ?? "");
+    const name = find(isName), grade = find(isGrade);
+    const serial = header.find(c => ["NO", "NUM", "NUMERO"].includes(normal(value(c.getAttribute("r")))));
+    const numberColumn = serial ? col(serial.getAttribute("r")) : "";
+    const available = [...rowNodes.keys()].filter(n => n > index && value(name + n).trim() &&
+      (!numberColumn || /^\d+$/.test(value(numberColumn + n).trim())));
+    const start = available[0];
+    if (!start) return {name, grade, first: index + 1, last: index + 1};
+    let end = start;
+    for (const next of available.slice(1)) {
+      if (next !== end + 1) break;
+      end = next;
+    }
+    if (numberColumn) end = available.at(-1);
+    return {name, grade, first: start, last: end};
+  }
+}
+
+const isName = label => /^(NOMBRES?|NOMBRE(S)? (DEL )?ALUMNO(S)?|ALUMNOS?|ESTUDIANTES?)$/.test(label);
+const isGrade = label => /^(CALIF|CALIF FINAL|CALIFICACION( FINAL)?|NOTA( FINAL)?)$/.test(label);
+const freshRecord = label => ({
+  label, scale: 100, decimals: 2, teacher: "", group: "", period: "", day: 0,
+  items: Array.from({length: 5}, (_, index) => ({label: "Actividad " + (index + 1), weight: "20"})),
+  scores: {}, sessions: Array.from({length: 30}, newSession)
+});
+
+function save() {
+  if (!book || !data) return;
+  persistDraft(book.key, data);
+}
+
+function activeSheetData() {
+  const label = sheet.official ? sheet.value("W3").trim() : "";
+  return data.sheets[sheet.entry.path] ??= {mapping: sheet.proposed, current: 0, records: [freshRecord(label)]};
+}
+
+function cellIsMergedMember(ref, merged) {
+  const row = Number(ref.slice(col(ref).length));
+  const column = colIndex(col(ref));
+  return merged.some(([a, b]) => b && ref !== a && column >= colIndex(col(a)) && column <= colIndex(col(b)) &&
+    row >= Number(a.slice(col(a).length)) && row <= Number(b.slice(col(b).length)));
+}
+
+function roster(mapping) {
+  if (!mapping) return [];
+  return [...sheet.rowNodes.keys()]
+    .filter(row => row >= mapping.first && row <= mapping.last && sheet.value(mapping.name + row).trim())
+    .sort((a, b) => a - b)
+    .map(row => {
+      const ref = mapping.grade ? mapping.grade + row : null;
+      const target = sheet.cells.get(ref);
+      return {row, name: sheet.value(mapping.name + row).trim(), ref, original: ref ? sheet.value(ref) : "",
+        locked: Boolean(ref && (sheet.official && mapping.grade !== "AB" || cellIsMergedMember(ref, sheet.merged) || target && child(target, "f")))};
+    });
+}
+
+function configure() {
+  const state = activeSheetData();
+  record = state.records[state.current];
+  const mapping = state.mapping;
+  students = roster(mapping);
+  $("name-col").value = mapping?.name ?? "";
+  $("grade-col").value = mapping?.grade ?? "";
+  $("first-row").value = mapping?.first ?? "";
+  $("last-row").value = mapping?.last ?? "";
+  $("mapping").open = !students.length;
+  $("mapping-line").textContent = students.length
+    ? students.length + " alumnos · Nombres en " + mapping.name + (mapping.grade ? " · Calificaciones en " + mapping.grade : "") +
+      " · Filas " + mapping.first + "–" + mapping.last
+    : "Selecciona las columnas y filas de la lista para comenzar.";
+  if (!record.sessions) record.sessions = Array.from({length: 30}, newSession);
+  record.day ??= 0;
+  record.group ??= "";
+  record.period ??= "";
+  renderRecords(state);
+  $("record").value = state.current;
+  $("record-name").value = record.label;
+  $("official-fields").hidden = !students.length;
+  $("teacher-label").hidden = !sheet.official;
+  $("teacher").value = record.teacher;
+  $("group").value = record.group;
+  $("period").value = record.period;
+  $("group").placeholder = sheet.official ? sheet.value("V2").trim() || sheet.entry.name : sheet.entry.name;
+  $("scale").value = record.scale;
+  $("decimals").value = record.decimals;
+  $("view-switch").hidden = $("export-tools").hidden = !students.length;
+  switchView(data.view ?? "attendance");
+  buildRubrics();
+  buildGrid();
+  renderAttendance();
+  refresh();
+}
+
+function setBusy(busy) {
+  [$("choose"), $("saved-lists"), $("sheet-name")].forEach(control => control.disabled = busy);
+  if (busy) $("export").disabled = true;
+}
+
+async function loadFile(file, register = false) {
+  setBusy(true);
+  notice("Leyendo el Excel…");
+  try {
+    const nextBook = await openBook(file);
+    const nextData = await restoreDraft(nextBook.key);
+    const selection = nextBook.sheets.find(entry => entry.path === nextData.selected) ?? nextBook.sheets[0];
+    const nextSheet = await openSheet(nextBook, selection);
+    if (register) await rememberTemplate(nextBook, file);
+    book = nextBook;
+    data = nextData;
+    sheet = nextSheet;
+    data.selected = selection.path;
+    $("filename").textContent = file.name;
+    $("sheet-name").replaceChildren(...book.sheets.map(entry => new Option(entry.name, entry.path)));
+    $("sheet-name").value = selection.path;
+    $("welcome").hidden = true;
+    $("workspace").hidden = false;
+    notice();
+    configure();
+    $("archive-list").hidden = !bridge;
+    save();
+  } catch (error) {
+    notice(error.message, true);
+  } finally {
+    setBusy(false);
+    if (book) refresh();
+  }
+}
+
+function numeric(value) {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  return /^(?:\d+(?:[.,]\d*)?|[.,]\d+)$/.test(text) && Number(text.replace(",", ".")) <= 100
+    ? Number(text.replace(",", ".")) : NaN;
+}
+
+function gradeInput(value, label) {
+  const field = element("input");
+  field.type = "text";
+  field.inputMode = "decimal";
+  field.autocomplete = "off";
+  field.setAttribute("aria-label", label);
+  field.value = value ?? "";
+  return field;
+}
+
+function buildRubrics() {
+  $("rubrics").replaceChildren(...record.items.map((item, index) => {
+    const card = element("div", "", "rubric");
+    const bar = element("div", "", "remove-row");
+    const remove = element("button", "Quitar", "subtle danger");
+    remove.type = "button";
+    remove.disabled = record.items.length === 1;
+    remove.setAttribute("aria-label", "Quitar apartado " + (index + 1));
+    remove.onclick = async () => {
+      if (Object.values(record.scores).some(values => values[index]?.trim()) &&
+          !(await confirmAction("¿Quitar este apartado y las calificaciones registradas en él?"))) return;
+      record.items.splice(index, 1);
+      Object.values(record.scores).forEach(values => values.splice(index, 1));
+      buildRubrics();
+      buildGrid();
+      edited();
+    };
+    bar.append(element("span", "Apartado " + (index + 1)), remove);
+    const label = element("label", "Nombre");
+    const name = element("input");
+    name.value = item.label;
+    name.maxLength = 80;
+    name.setAttribute("aria-label", "Nombre del apartado " + (index + 1));
+    name.oninput = () => {
+      item.label = name.value;
+      const title = item.label.trim() || "Apartado " + (index + 1);
+      $("heading-" + index).firstChild.textContent = title;
+      rows.forEach(row => row.fields[index].setAttribute("aria-label", row.student.name + " · " + title + " sobre 100"));
+      edited();
+    };
+    label.append(name);
+    const weightLabel = element("label", "Puntos que vale");
+    const weight = gradeInput(item.weight, "Puntos del apartado " + (index + 1));
+    weight.id = "weight-" + index;
+    weight.oninput = () => { item.weight = weight.value; edited(); };
+    weightLabel.append(weight);
+    card.append(bar, label, weightLabel);
+    return card;
+  }));
+}
+
+function buildGrid() {
+  const head = element("thead");
+  const headings = element("tr");
+  headings.append(element("th", "Alumno"));
+  record.items.forEach((item, index) => {
+    const th = element("th", item.label.trim() || "Apartado " + (index + 1));
+    th.id = "heading-" + index;
+    th.append(element("small"));
+    headings.append(th);
+  });
+  const hasOriginal = students.some(s => s.original !== "");
+  if (hasOriginal) headings.append(element("th", "En plantilla"));
+  const total = element("th", "Total");
+  total.id = "total-heading";
+  headings.append(total);
+  head.append(headings);
+  const body = element("tbody");
+  rows = students.map((student, rowIndex) => {
+    const tr = element("tr");
+    const name = element("th", student.name);
+    name.scope = "row";
+    tr.append(name);
+    const fields = [], points = [];
+    record.items.forEach((item, index) => {
+      const cell = element("td");
+      const field = gradeInput(record.scores[student.row]?.[index],
+        student.name + " · " + (item.label.trim() || "Apartado " + (index + 1)) + " sobre 100");
+      field.className = "grade";
+      field.oninput = () => { setScore(student.row, index, field.value); edited(); };
+      field.onpaste = event => pasteScores(event, rowIndex, index);
+      const value = element("span", "", "points");
+      fields.push(field);
+      points.push(value);
+      cell.append(field, value);
+      tr.append(cell);
+    });
+    if (hasOriginal) tr.append(element("td", student.original || "—", "existing"));
+    const result = element("td", "", "total");
+    tr.append(result);
+    body.append(tr);
+    return {student, fields, points, result, final: null};
+  });
+  $("grades").replaceChildren(head, body);
+}
+
+function setScore(row, index, value) {
+  const values = record.scores[row] ??= Array(record.items.length).fill("");
+  values[index] = value;
+}
+
+function pasteScores(event, fromRow, fromColumn) {
+  const text = event.clipboardData.getData("text/plain").replace(/\r\n?/g, "\n").replace(/\n$/, "");
+  const grid = text.split("\n").map(line => line.split("\t"));
+  if (grid.length === 1 && grid[0].length === 1) return;
+  event.preventDefault();
+  if (fromRow + grid.length > rows.length || grid.some(line => fromColumn + line.length > record.items.length)) {
+    notice("El bloque no cabe en la tabla desde la celda seleccionada.", true);
+    return;
+  }
+  if (grid.some(line => line.some(value => Number.isNaN(numeric(value))))) {
+    notice("El bloque contiene calificaciones fuera del rango 0–100 o valores que no son números.", true);
+    return;
+  }
+  grid.forEach((line, offset) => line.forEach((value, index) => {
+    const row = rows[fromRow + offset];
+    const column = fromColumn + index;
+    row.fields[column].value = value.trim();
+    setScore(row.student.row, column, value.trim());
+  }));
+  edited();
+}
+
+const rounded = (value, decimals) => Math.round((value + 1e-10) * 10 ** decimals) / 10 ** decimals;
+function refresh() {
+  const weights = record.items.map(item => numeric(item.weight));
+  const validWeights = weights.every(w => Number.isFinite(w));
+  const weightTotal = rounded(weights.reduce((sum, w) => sum + (w || 0), 0), 8);
+  const validTotal = validWeights && weightTotal > 0 && weightTotal <= 100;
+  const summary = $("weight-summary");
+  summary.textContent = validWeights ? format.format(weightTotal) + " puntos asignados" : "Revisa los puntos";
+  summary.className = "pill" + (!validTotal ? " bad" : weightTotal < 100 ? " caution" : "");
+  const totalHeader = $("total-heading");
+  if (totalHeader) totalHeader.textContent = "Total / " + record.scale;
+  weights.forEach((weight, index) => {
+    $("weight-" + index).setAttribute("aria-invalid", String(!Number.isFinite(weight)));
+    $("heading-" + index).lastChild.textContent = Number.isFinite(weight) ? format.format(weight) + " pts máx." : "—";
+  });
+  let ready = 0, incomplete = 0, invalid = 0, locked = 0;
+  rows.forEach(row => {
+    const grades = row.fields.map(field => numeric(field.value));
+    const hasInvalid = grades.some(Number.isNaN);
+    const needsGrade = grades.some((grade, index) => grade === null && weights[index] > 0);
+    let pointsTotal = 0;
+    let hasPoints = false;
+    grades.forEach((grade, index) => {
+      row.fields[index].setAttribute("aria-invalid", String(Number.isNaN(grade)));
+      const points = Number.isFinite(grade) && Number.isFinite(weights[index]) ? grade * weights[index] / 100 : null;
+      row.points[index].textContent = points === null ? "—" : format.format(points) + " pts";
+      if (points !== null) { pointsTotal += points; hasPoints = true; }
+    });
+    const total = rounded(pointsTotal * record.scale / 100, record.decimals);
+    row.final = validTotal && !hasInvalid && !needsGrade && !row.student.locked ? total : null;
+    row.result.textContent = validTotal && !hasInvalid && hasPoints
+      ? total.toLocaleString("es-MX", {minimumFractionDigits: record.decimals, maximumFractionDigits: record.decimals}) : "—";
+    if (row.student.locked) { locked++; row.result.append(element("small", "Celda reservada")); }
+    else if (hasInvalid) { invalid++; row.result.append(element("small", "Revisa la nota")); }
+    else if (needsGrade) { incomplete++; if (hasPoints) row.result.append(element("small", "Provisional")); }
+    else if (row.final !== null) ready++;
+  });
+  $("progress").textContent = ready + " de " + students.length + " listas";
+  $("export").disabled = (!ready && !hasAttendance()) || $("choose").disabled;
+  $("preview-open").disabled = $("choose").disabled;
+  const notes = [];
+  if (!validTotal) notes.push("Asigna un total mayor que 0 y de hasta 100 puntos para exportar.");
+  else if (weightTotal < 100) notes.push("El máximo con estos apartados es " + format.format(weightTotal * record.scale / 100) + " sobre " + record.scale + ".");
+  if (invalid) notes.push("Las filas con calificaciones fuera de 0 a 100 quedan pendientes.");
+  if (incomplete) notes.push("Las filas pendientes conservarán la calificación que tengan en la plantilla.");
+  if (locked) notes.push("Las celdas reservadas se conservarán.");
+  $("export-note").textContent = notes.join(" ") || "Al exportar se actualizará la columna de calificación de esta hoja.";
+}
+
+function edited() { notice(); refresh(); save(); }
+
+function writeCell(doc, ref, value) {
+  const ns = doc.documentElement.namespaceURI;
+  const column = col(ref);
+  const rowNumber = ref.slice(column.length);
+  const row = tags(doc, "row").find(node => node.getAttribute("r") === rowNumber);
+  if (!row) throw Error("La fila " + rowNumber + " no existe en la plantilla.");
+  let cell = [...row.children].find(node => node.getAttribute("r") === ref);
+  if (!cell) {
+    cell = doc.createElementNS(ns, "c");
+    cell.setAttribute("r", ref);
+    const next = [...row.children].find(node => node.localName !== "c" || colIndex(col(node.getAttribute("r"))) > colIndex(column));
+    row.insertBefore(cell, next ?? null);
+  }
+  for (const node of [...cell.children]) if (["v", "is", "f"].includes(node.localName)) node.remove();
+  const extension = child(cell, "extLst");
+  if (value === null) {
+    cell.removeAttribute("t");
+  } else if (typeof value === "number") {
+    cell.removeAttribute("t");
+    const output = doc.createElementNS(ns, "v");
+    output.textContent = String(value);
+    cell.insertBefore(output, extension ?? null);
+  } else {
+    cell.setAttribute("t", "inlineStr");
+    const inline = doc.createElementNS(ns, "is");
+    const text = doc.createElementNS(ns, "t");
+    text.setAttributeNS("http://www.w3.org/XML/1998/namespace", "xml:space", "preserve");
+    text.textContent = value;
+    inline.append(text);
+    cell.insertBefore(inline, extension ?? null);
+  }
+  return cell;
+}
+
+$("file").onchange = () => {
+  const file = $("file").files[0];
+  $("file").value = "";
+  if (file) loadFile(file, true);
+};
+$("sheet-name").onchange = async () => {
+  const selected = book.sheets.find(entry => entry.path === $("sheet-name").value);
+  setBusy(true);
+  $("workspace").inert = true;
+  try {
+    sheet = await openSheet(book, selected);
+    data.selected = selected.path;
+    notice();
+    configure();
+    save();
+  } catch (error) {
+    $("sheet-name").value = sheet.entry.path;
+    notice(error.message, true);
+  } finally {
+    $("workspace").inert = false;
+    setBusy(false);
+    refresh();
+  }
+};
+$("mapping-form").onsubmit = event => {
+  event.preventDefault();
+  const name = $("name-col").value.trim().toUpperCase();
+  const grade = $("grade-col").value.trim().toUpperCase();
+  const first = Number($("first-row").value), last = Number($("last-row").value);
+  if ([name, ...(grade ? [grade] : [])].some(column => !/^[A-Z]{1,3}$/.test(column) || colIndex(column) > 16384) || name === grade || first > last) {
+    notice("Revisa las columnas y el rango de filas.", true);
+    return;
+  }
+  if (sheet.official && (grade !== "AB" || first < 7)) {
+    notice("En esta plantilla usa AB para CALIF y selecciona las filas a partir de la 7.", true);
+    return;
+  }
+  const mapping = {name, grade, first, last};
+  if (!roster(mapping).length) { notice("El rango elegido no contiene nombres.", true); return; }
+  activeSheetData().mapping = mapping;
+  notice();
+  configure();
+  save();
+};
+$("record").onchange = () => {
+  activeSheetData().current = Number($("record").value);
+  notice();
+  configure();
+  save();
+};
+$("new-record").onclick = () => {
+  const state = activeSheetData();
+  state.records.push(freshRecord(""));
+  state.current = state.records.length - 1;
+  notice();
+  configure();
+  save();
+  $("record-name").focus();
+  $("record-name").select();
+};
+$("record-name").oninput = () => {
+  record.label = $("record-name").value;
+  renderRecords(activeSheetData());
+  save();
+};
+for (const key of ["teacher", "group", "period"]) $(key).oninput = () => {
+  record[key] = $(key).value;
+  if (key !== "teacher") renderRecords(activeSheetData());
+  save();
+};
+for (const key of ["scale", "decimals"]) $(key).onchange = () => { record[key] = Number($(key).value); edited(); };
+$("add").onclick = () => {
+  record.items.push({label: "Actividad " + (record.items.length + 1), weight: "0"});
+  buildRubrics();
+  buildGrid();
+  edited();
+  $("rubrics").lastElementChild.querySelector("input").select();
+};
+</script>
+<script src="attendance.js"></script>
+</body>
+</html>
