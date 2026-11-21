@@ -44,6 +44,7 @@ ipcMain.handle("docencia:request", async (event, request) => {
     return store.remember(key, name, bytes);
   }
   case "archive": case "unarchive": return store.archive(key, action === "archive");
+  case "deleteList": return store.deleteList(key, folder => shell.trashItem(folder));
   case "newAcademicTerm": return store.startSemester();
   case "openAcademicTerm": return store.openSemester(key);
   case "revealFolder": {

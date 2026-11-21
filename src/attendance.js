@@ -52,6 +52,8 @@ function showCatalog(catalog, selected) {
     ...savedLists.map(item => new Option(item.name, item.key)));
   $("saved-lists").value = selected ?? "";
   $("saved-label").hidden = !savedLists.length;
+  $("delete-list").hidden = !savedLists.length;
+  $("delete-list").disabled = $("choose").disabled || !$("saved-lists").value;
   $("storage").hidden = false;
   $("folder-path").textContent = catalog.folder;
   $("reveal-folder").disabled = !catalog.available;
@@ -73,12 +75,17 @@ async function manageStorage(action) {
   $("workspace").inert = $("storage").inert = true;
   try {
     if (!(await flushPending())) throw Error("Hay cambios pendientes de guardar. Recupera primero el acceso a la carpeta de datos.");
-    const key = action === "archive" ? book?.key : action === "openAcademicTerm" ? $("saved-terms").value : $("archived-lists").value;
+    const key = action === "deleteList" ? $("saved-lists").value : action === "archive" ? book?.key :
+      action === "openAcademicTerm" ? $("saved-terms").value : $("archived-lists").value;
+    if (action === "deleteList") {
+      const list = savedLists.find(item => item.key === key);
+      if (!list || !(await confirmAction("¿Enviar «" + list.name + "» a la papelera? Saldrá de Listas guardadas junto con su copia local, calificaciones y asistencias."))) return;
+    }
     if (action === "archive" && !(await confirmAction("¿Archivar esta lista con todos sus registros? Podrás restaurarla desde Carpeta de datos."))) return;
     if (action === "newAcademicTerm" && !(await confirmAction("¿Archivar el semestre abierto e iniciar otro vacío? Podrás volver a abrir el semestre anterior con todos sus datos."))) return;
     const catalog = await send(action, {key});
     if (!catalog) return;
-    if (["archive", "newAcademicTerm", "openAcademicTerm"].includes(action)) {
+    if (["archive", "deleteList", "newAcademicTerm", "openAcademicTerm"].includes(action)) {
       book = sheet = data = record = null;
       students = [];
       rows = [];
@@ -87,6 +94,7 @@ async function manageStorage(action) {
       showCatalog(catalog);
       if (catalog.lists.length) await openSaved(catalog.active ?? catalog.lists[0].key);
       if (action === "newAcademicTerm") notice("Semestre nuevo listo. Importa las listas que vas a usar.");
+      if (action === "deleteList") notice("Lista enviada a la papelera.");
     } else if (action === "unarchive") {
       showCatalog(catalog, key);
       await openSaved(key);
@@ -106,6 +114,7 @@ async function manageStorage(action) {
 $("reveal-folder").onclick = () => send("revealFolder").catch(error => notice(error?.message ?? error, true));
 $("choose-folder").onclick = () => manageStorage("chooseFolder");
 $("archive-list").onclick = () => manageStorage("archive");
+$("delete-list").onclick = () => manageStorage("deleteList");
 $("restore-list").onclick = () => manageStorage("unarchive");
 $("new-term").onclick = () => manageStorage("newAcademicTerm");
 $("open-term").onclick = () => manageStorage("openAcademicTerm");
@@ -141,7 +150,10 @@ $("choose").onclick = async () => {
     if (book) refresh();
   }
 };
-$("saved-lists").onchange = () => openSaved($("saved-lists").value);
+$("saved-lists").onchange = () => {
+  $("delete-list").disabled = !$("saved-lists").value;
+  return openSaved($("saved-lists").value);
+};
 
 function switchView(view) {
   for (const [name, section] of [["attendance", "attendance"], ["grades", "evaluation"], ["summary", "summary"]]) {

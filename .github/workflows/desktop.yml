@@ -1,4 +1,4 @@
-name: Compilar Docencia para Windows y Linux
+name: Compilar Docencia para macOS, Windows y Linux
 
 on:
   workflow_dispatch:
@@ -55,4 +55,30 @@ jobs:
           path: |
             build/portable/*.zip
             build/portable/*.tar.gz
+          if-no-files-found: error
+
+  macos:
+    name: macOS-Universal
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Crear y verificar el instalador universal
+        shell: bash
+        run: |
+          ./scripts/build-macos.sh universal
+          app=build/Docencia.app
+          version=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$app/Contents/Info.plist")
+          mkdir -p build/installer-root build/portable
+          ditto "$app" build/installer-root/Docencia.app
+          pkg="build/portable/Docencia-$version-macOS-Universal.pkg"
+          pkgbuild --root build/installer-root --identifier mx.santiagoheredia.docencia --version "$version" --install-location /Applications "$pkg"
+          pkgutil --expand-full "$pkg" build/installer-check
+          payload=build/installer-check/Payload/Docencia.app
+          test "$(xcrun lipo -archs "$payload/Contents/MacOS/Docencia" | tr ' ' '\n' | sort | paste -sd ' ' -)" = 'arm64 x86_64'
+          codesign --verify --strict "$payload"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: Docencia-macOS-Universal
+          path: build/portable/*.pkg
           if-no-files-found: error

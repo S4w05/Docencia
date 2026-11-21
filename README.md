@@ -1,5 +1,7 @@
 # Docencia
 
+[Manual de uso](docs/Manual-de-uso.md)
+
 App de asistencia y calificaciones para docentes que trabajan con listas de Excel. Permite llevar varios grupos y materias, separar registros por parcial y exportar el libro con calificaciones, faltas y una hoja con el detalle de asistencia.
 
 ## Aplicaciones portables para Windows y Linux
@@ -13,7 +15,7 @@ Ambas ediciones guardan localmente las listas, asistencias y calificaciones, y p
 
 ### Generar los paquetes
 
-Ejecuta el flujo **Compilar Docencia para Windows y Linux** en la pestaña [Actions](https://github.com/S4w05/Docencia/actions/workflows/desktop.yml). El flujo empaqueta Windows y Linux para x64 y arm64.
+Ejecuta el flujo **Compilar Docencia para macOS, Windows y Linux** en la pestaña [Actions](https://github.com/S4w05/Docencia/actions/workflows/desktop.yml). El flujo genera un instalador universal para Mac y empaqueta Windows y Linux para x64 y arm64.
 
 También puedes generarlos con Python 3.10 o posterior y la CLI de GitHub. Por ejemplo, desde Linux para conservar los permisos del ejecutable:
 

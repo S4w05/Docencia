@@ -12,7 +12,7 @@ private struct CatalogEntry: Codable {
 }
 
 private enum AppError: LocalizedError {
-    case invalidRequest, invalidWorkbook, tooLarge, unavailableFolder, conflictingCopy(String)
+    case invalidRequest, invalidWorkbook, tooLarge, unavailableFolder, conflictingCopy(String), trashFailed, restoreFailed(URL)
 
     var errorDescription: String? {
         switch self {
@@ -21,6 +21,8 @@ private enum AppError: LocalizedError {
         case .tooLarge: return "Selecciona un Excel de hasta 35 MB."
         case .unavailableFolder: return "La carpeta de datos no está disponible. Conecta el disco o devuelve la carpeta a su ubicación para recuperar las listas."
         case .conflictingCopy(let name): return "El destino contiene una versión diferente de «\(name)». Elige otra carpeta para conservar ambas versiones."
+        case .trashFailed: return "No se pudo enviar la lista a la papelera. Se conservó en Docencia."
+        case .restoreFailed(let folder): return "No se pudo restaurar la lista automáticamente. Revisa la carpeta «\(folder.path)»."
         }
     }
 }
@@ -97,6 +99,7 @@ private struct RegisterStore {
 
     func save(_ key: String, draft: String) throws {
         guard accessible else { throw AppError.unavailableFolder }
+        guard fm.fileExists(atPath: try path(key, "json").path) else { throw AppError.invalidRequest }
         try Data(draft.utf8).write(to: path(key, "draft"), options: .atomic)
         UserDefaults.standard.set(key, forKey: "activeWorkbook")
     }
@@ -105,6 +108,35 @@ private struct RegisterStore {
         let from = try path(key, archived ? "json" : "archived")
         let to = try path(key, archived ? "archived" : "json")
         try fm.moveItem(at: from, to: to)
+    }
+
+    func deleteList(_ key: String, trash: (URL) throws -> Void) throws {
+        guard accessible else { throw AppError.unavailableFolder }
+        let metadata = try path(key, "json")
+        let workbook = try path(key, "xlsx")
+        let draft = try path(key, "draft")
+        let entry = try JSONDecoder().decode(CatalogEntry.self, from: Data(contentsOf: metadata))
+        guard entry.key == key, fm.fileExists(atPath: workbook.path) else { throw AppError.invalidRequest }
+        let stage = root.appendingPathComponent("Lista eliminada de Docencia - " + UUID().uuidString, isDirectory: true)
+        try fm.createDirectory(at: stage, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        var moved: [(source: URL, destination: URL)] = []
+        do {
+            for source in [metadata, workbook, draft] {
+                if source == draft && !fm.fileExists(atPath: source.path) { continue }
+                let destination = stage.appendingPathComponent(source.lastPathComponent)
+                try fm.moveItem(at: source, to: destination)
+                moved.append((source, destination))
+            }
+            try trash(stage)
+        } catch {
+            do {
+                for item in moved.reversed() { try fm.moveItem(at: item.destination, to: item.source) }
+                try fm.removeItem(at: stage)
+            } catch {
+                throw AppError.restoreFailed(stage)
+            }
+            throw AppError.trashFailed
+        }
     }
 
     func copied(to target: URL) throws -> RegisterStore {
@@ -238,6 +270,9 @@ private final class Docencia: NSObject, NSApplicationDelegate, WKScriptMessageHa
                 replyHandler(try switchAcademicTerm(to: URL(fileURLWithPath: key, isDirectory: true)), nil)
             case "archive", "unarchive":
                 try store.setArchived(action == "archive", key: key)
+                replyHandler(try catalogWithSemesters(), nil)
+            case "deleteList":
+                try store.deleteList(key) { try FileManager.default.trashItem(at: $0, resultingItemURL: nil) }
                 replyHandler(try catalogWithSemesters(), nil)
             case "restore":
                 replyHandler(try store.restore(key), nil)

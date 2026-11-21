@@ -27,6 +27,7 @@ main{max-width:1390px;margin:0 auto;padding:clamp(1rem,4vw,3rem)}.title{display:
 <div id="notice" class="message" role="status" aria-live="polite" hidden></div>
 <section class="panel lists" aria-label="Listas de alumnos">
   <div class="panel-head"><label id="saved-label" hidden>Listas guardadas<select id="saved-lists"></select></label>
+  <button type="button" id="delete-list" hidden disabled>Eliminar lista…</button>
   <button type="button" id="choose">+ Importar lista de Excel</button></div>
   <details class="storage panel-body" id="storage" hidden><summary>Carpeta de datos</summary>
     <p id="folder-path" class="folder-path"></p>
@@ -425,6 +426,7 @@ function configure() {
 
 function setBusy(busy) {
   [$("choose"), $("saved-lists"), $("sheet-name")].forEach(control => control.disabled = busy);
+  $("delete-list").disabled = busy || !$("saved-lists").value;
   if (busy) $("export").disabled = true;
 }
 

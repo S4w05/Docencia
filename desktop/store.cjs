@@ -104,6 +104,34 @@ class RegisterStore {
     return this.catalog();
   }
 
+  async deleteList(key, trash) {
+    const metadata = this.component(key, "json");
+    const workbook = this.component(key, "xlsx");
+    const draft = this.component(key, "draft");
+    const entry = readJSON(metadata);
+    if (entry.key !== key || !fs.existsSync(workbook)) throw Error("La lista ya no está disponible.");
+    const stage = fs.mkdtempSync(path.join(this.folder, "Lista eliminada de Docencia - "));
+    const moved = [];
+    try {
+      for (const source of [metadata, workbook, draft]) {
+        if (source === draft && !fs.existsSync(source)) continue;
+        const destination = path.join(stage, path.basename(source));
+        fs.renameSync(source, destination);
+        moved.push([source, destination]);
+      }
+      await trash(stage);
+    } catch (error) {
+      try {
+        for (const [source, destination] of moved.reverse()) fs.renameSync(destination, source);
+        fs.rmdirSync(stage);
+      } catch {
+        throw Error("No se pudo restaurar la lista automáticamente. Revisa la carpeta «" + stage + "».");
+      }
+      throw Error("No se pudo enviar la lista a la papelera. Se conservó en Docencia.", {cause: error});
+    }
+    return this.catalog();
+  }
+
   switchSemester(folder) {
     if (!isDirectory(folder)) throw Error(unavailable);
     const semesters = [this.folder, ...this.state.semesters.filter(item => item !== folder && item !== this.folder)];
