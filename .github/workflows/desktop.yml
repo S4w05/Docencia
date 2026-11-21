@@ -1,0 +1,58 @@
+name: Compilar Docencia para Windows y Linux
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  desktop:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Windows-x64
+            runner: windows-2025
+            platform: win32
+            architecture: x64
+          - label: Windows-arm64
+            runner: ubuntu-22.04
+            platform: win32
+            architecture: arm64
+          - label: Linux-x64
+            runner: ubuntu-22.04
+            platform: linux
+            architecture: x64
+          - label: Linux-arm64
+            runner: ubuntu-22.04
+            platform: linux
+            architecture: arm64
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Probar el almacenamiento local
+        run: node --test desktop/store.test.cjs
+      - name: Crear paquete portable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/package-desktop.py ${{ matrix.platform }} ${{ matrix.architecture }} build/portable
+      - name: Abrir Docencia en Windows
+        if: matrix.label == 'Windows-x64'
+        shell: pwsh
+        run: |
+          $app = Start-Process -FilePath "build/portable/Docencia/Docencia.exe" -ArgumentList "--verificar-docencia" -PassThru
+          if (-not $app.WaitForExit(60000)) { $app.Kill(); throw "Docencia excedió el tiempo de inicio" }
+          if ($app.ExitCode -ne 0) { exit $app.ExitCode }
+      - name: Abrir Docencia en Linux
+        if: matrix.label == 'Linux-x64'
+        run: timeout 60s xvfb-run -a build/portable/Docencia/docencia --verificar-docencia
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: Docencia-${{ matrix.label }}
+          path: |
+            build/portable/*.zip
+            build/portable/*.tar.gz
+          if-no-files-found: error

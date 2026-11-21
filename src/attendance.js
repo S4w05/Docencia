@@ -1,6 +1,6 @@
 "use strict";
 
-const bridge = window.webkit?.messageHandlers?.docencia;
+const bridge = window.docenciaDesktop ?? window.webkit?.messageHandlers?.docencia;
 const send = (action, payload = {}) => bridge.postMessage({action, ...payload});
 let savedLists = [];
 let saveVersion = 0;
@@ -26,7 +26,7 @@ async function writeDraft(key, payload, version) {
   try {
     if (bridge) await send("save", {key, draft: payload});
     else localStorage.setItem(key, payload);
-    if (version === saveVersion) $("save-status").textContent = bridge ? "Cambios guardados en esta Mac" : "Borrador guardado en este navegador";
+    if (version === saveVersion) $("save-status").textContent = bridge ? "Cambios guardados en este equipo" : "Borrador guardado en este navegador";
     return true;
   } catch (error) {
     if (version === saveVersion) {
@@ -611,6 +611,7 @@ async function exportFile() {
 $("export").onclick = exportFile;
 
 if (bridge) {
+  if (window.docenciaDesktop) $("reveal-folder").textContent = "Abrir carpeta";
   send("catalog").then(async catalog => {
     showCatalog(catalog, catalog.active);
     if (catalog.active) await openSaved(catalog.active);
