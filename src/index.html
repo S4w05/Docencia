@@ -37,6 +37,11 @@ main{max-width:1390px;margin:0 auto;padding:clamp(1rem,4vw,3rem)}.title{display:
     <div id="archived-controls" class="fields" hidden>
       <label>Listas archivadas<select id="archived-lists"></select></label><button type="button" id="restore-list">Restaurar lista</button>
     </div>
+    <div class="fields term-controls">
+      <button type="button" id="new-term">Archivar semestre e iniciar otro…</button>
+      <label id="saved-term-label" hidden>Semestres guardados<select id="saved-terms"></select></label>
+      <button type="button" id="open-term" hidden>Abrir semestre</button>
+    </div>
     <p class="note">Una lista archivada se puede restaurar aquí. Al cambiar de carpeta, Docencia conserva la copia anterior.</p>
   </details>
 </section>
@@ -48,11 +53,14 @@ main{max-width:1390px;margin:0 auto;padding:clamp(1rem,4vw,3rem)}.title{display:
 <input type="file" id="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <div id="workspace" hidden>
   <section class="panel" aria-labelledby="format-label">
-    <div class="panel-head"><div><h2 id="format-label">Materia y grupo</h2><p class="muted file-name" id="filename"></p></div><button type="button" id="new-record">+ Nuevo registro</button></div>
+    <div class="panel-head"><div><h2 id="format-label">Materia y grupo</h2><p class="muted file-name" id="filename"></p></div><button type="button" id="new-record">+ Materia</button></div>
     <div class="panel-body">
     <div class="fields file-row">
       <label>Hoja de la lista<select id="sheet-name"></select></label>
-      <label>Registro guardado<select id="record"></select></label>
+      <label>Materia guardada<select id="subject"></select></label>
+      <label>Periodo<select id="record"></select></label>
+      <button type="button" id="add-period">+ Parcial</button>
+      <button type="button" id="add-semester">+ Semestral</button>
     </div>
     <p class="note" id="mapping-line"></p>
     <details id="mapping"><summary>Ajustar columnas y filas</summary>
@@ -66,16 +74,31 @@ main{max-width:1390px;margin:0 auto;padding:clamp(1rem,4vw,3rem)}.title{display:
     </details>
     <div class="fields" id="official-fields" hidden style="margin-top:.8rem">
       <label>Materia<input id="record-name" class="wide" maxlength="80" placeholder="Nombre de la asignatura"></label>
-      <label>Grado o grupo<input id="group" class="wide" maxlength="80" placeholder="Como aparece en la lista"></label>
-      <label>Periodo<select id="period"><option value="">Sin definir</option><option value="1">Primer parcial</option><option value="2">Segundo parcial</option><option value="3">Tercer parcial</option></select></label>
+      <label>Grado o grupo de la lista<input id="group" class="wide" readonly></label>
+      <label>Nombre del periodo<input id="period" class="wide" maxlength="80" placeholder="Primer parcial"></label>
+      <label>Tipo de periodo<select id="period-kind"><option value="partial">Parcial</option><option value="semester">Semestral</option></select></label>
       <label id="teacher-label">Docente<input id="teacher" class="wide" maxlength="100" placeholder="Como en la plantilla"></label>
+      <button type="button" id="remove-subject">Quitar materia…</button>
     </div>
     </div>
   </section>
   <nav id="view-switch" class="switcher" aria-label="Sección del registro" hidden>
     <button type="button" id="show-attendance" aria-pressed="true">Asistencia diaria</button>
     <button type="button" id="show-grades" aria-pressed="false">Calificaciones</button>
+    <button type="button" id="show-summary" aria-pressed="false">Recuento de materia</button>
   </nav>
+  <section id="summary" class="panel" hidden>
+    <div class="panel-head"><h2>Recuento de materia</h2></div>
+    <div class="panel-body">
+      <div class="fields">
+        <label>Parciales previstos<input type="number" min="1" step="1" id="planned" class="short"></label>
+        <label>Puntos de parciales<input type="number" min="0" max="100" step="any" id="partial-points" class="short"></label>
+        <label>Puntos del semestral<input type="number" min="0" max="100" step="any" id="semester-points" class="short"></label>
+      </div>
+      <p class="note" id="summary-note"></p>
+    </div>
+    <div class="sheet" tabindex="0" aria-label="Calificaciones y asistencia por periodo"><table id="summary-grid"></table></div>
+  </section>
   <section id="attendance" class="panel" hidden>
     <div class="panel-head"><div><h2>Pase de lista</h2><p id="attendance-summary" class="muted"></p></div>
     <button type="button" class="primary" id="today">Pasar lista hoy</button></div>
@@ -83,6 +106,7 @@ main{max-width:1390px;margin:0 auto;padding:clamp(1rem,4vw,3rem)}.title{display:
       <label>Sesión<select id="sessions"></select></label>
       <label>Fecha<input type="date" id="session-date"></label>
       <button type="button" id="add-session">+ Agregar día</button>
+      <button type="button" id="remove-session">Quitar día</button>
       <button type="button" id="all-present">Marcar pendientes como presentes</button>
     </div>
     <div class="sheet" tabindex="0" aria-label="Lista de asistencia"><table id="attendance-grid"></table></div>
@@ -108,7 +132,7 @@ main{max-width:1390px;margin:0 auto;padding:clamp(1rem,4vw,3rem)}.title{display:
     <form method="dialog"><button type="submit">Cerrar</button></form>
   </div>
   <div class="panel-body">
-    <div class="tools" id="preview-tabs"><button type="button" id="preview-official" aria-pressed="true">Hoja institucional</button><button type="button" id="preview-detail" aria-pressed="false">Asistencia diaria</button></div>
+    <div class="tools" id="preview-tabs"><button type="button" id="preview-official" aria-pressed="true">Hoja institucional</button><button type="button" id="preview-detail" aria-pressed="false">Asistencia diaria</button><button type="button" id="preview-summary" aria-pressed="false">Recuento de materia</button></div>
     <p class="note" id="preview-note"></p>
   </div>
   <div class="sheet" tabindex="0" aria-label="Datos de la hoja de Excel"><table id="preview-grid"></table></div>
@@ -303,8 +327,9 @@ async function openSheet(workbook, entry) {
   const official = normal(value("C5")) === "NOMBRES" && normal(value("AB5")) === "CALIF" &&
     normal(value("B3")).startsWith("MAESTRO") && normal(value("S3")) === "ASIGNATURA";
   const attendanceLayout = official && normal(value("D5")) === "ASISTENCIA" && normal(value("AA5")) === "TOTAL FALTAS";
+  const periodRef = official && normal(value("B4")).startsWith("PERIODO") ? "B4" : null;
   const proposed = nameHeading ? suggestMapping(nameHeading[0], nameHeading[1]) : null;
-  return {entry, rowNodes, cells, merged, value, official, attendanceLayout, proposed};
+  return {entry, rowNodes, cells, merged, value, official, attendanceLayout, periodRef, proposed};
 
   function suggestMapping(index, row) {
     const header = [...row.children];
@@ -329,7 +354,7 @@ async function openSheet(workbook, entry) {
 const isName = label => /^(NOMBRES?|NOMBRE(S)? (DEL )?ALUMNO(S)?|ALUMNOS?|ESTUDIANTES?)$/.test(label);
 const isGrade = label => /^(CALIF|CALIF FINAL|CALIFICACION( FINAL)?|NOTA( FINAL)?)$/.test(label);
 const freshRecord = label => ({
-  label, scale: 100, decimals: 2, teacher: "", group: "", period: "", day: 0,
+  label, scale: 100, decimals: 2, teacher: "", group: "", period: "Primer parcial", kind: "partial", day: 0,
   items: Array.from({length: 5}, (_, index) => ({label: "Actividad " + (index + 1), weight: "20"})),
   scores: {}, sessions: Array.from({length: 30}, newSession)
 });
@@ -341,7 +366,9 @@ function save() {
 
 function activeSheetData() {
   const label = sheet.official ? sheet.value("W3").trim() : "";
-  return data.sheets[sheet.entry.path] ??= {mapping: sheet.proposed, current: 0, records: [freshRecord(label)]};
+  const state = data.sheets[sheet.entry.path] ??= {mapping: sheet.proposed, current: 0, records: [freshRecord(label)]};
+  initializePeriods(state);
+  return state;
 }
 
 function cellIsMergedMember(ref, merged) {
@@ -378,23 +405,18 @@ function configure() {
     ? students.length + " alumnos · Nombres en " + mapping.name + (mapping.grade ? " · Calificaciones en " + mapping.grade : "") +
       " · Filas " + mapping.first + "–" + mapping.last
     : "Selecciona las columnas y filas de la lista para comenzar.";
-  if (!record.sessions) record.sessions = Array.from({length: 30}, newSession);
-  record.day ??= 0;
-  record.group ??= "";
-  record.period ??= "";
   renderRecords(state);
-  $("record").value = state.current;
+  $("official-fields").hidden = $("view-switch").hidden = $("export-tools").hidden = !record || !students.length;
+  switchView(data.view ?? "attendance");
+  if (!record) { rows = []; return; }
   $("record-name").value = record.label;
-  $("official-fields").hidden = !students.length;
   $("teacher-label").hidden = !sheet.official;
   $("teacher").value = record.teacher;
-  $("group").value = record.group;
+  $("group").value = rosterGroup();
   $("period").value = record.period;
-  $("group").placeholder = sheet.official ? sheet.value("V2").trim() || sheet.entry.name : sheet.entry.name;
+  $("period-kind").value = record.kind;
   $("scale").value = record.scale;
   $("decimals").value = record.decimals;
-  $("view-switch").hidden = $("export-tools").hidden = !students.length;
-  switchView(data.view ?? "attendance");
   buildRubrics();
   buildGrid();
   renderAttendance();
@@ -568,6 +590,7 @@ function pasteScores(event, fromRow, fromColumn) {
 
 const rounded = (value, decimals) => Math.round((value + 1e-10) * 10 ** decimals) / 10 ** decimals;
 function refresh() {
+  if (!record) return;
   const weights = record.items.map(item => numeric(item.weight));
   const validWeights = weights.every(w => Number.isFinite(w));
   const weightTotal = rounded(weights.reduce((sum, w) => sum + (w || 0), 0), 8);
@@ -613,6 +636,7 @@ function refresh() {
   if (incomplete) notes.push("Las filas pendientes conservarán la calificación que tengan en la plantilla.");
   if (locked) notes.push("Las celdas reservadas se conservarán.");
   $("export-note").textContent = notes.join(" ") || "Al exportar se actualizará la columna de calificación de esta hoja.";
+  if (!$("summary").hidden) renderSummary();
 }
 
 function edited() { notice(); refresh(); save(); }
@@ -695,32 +719,6 @@ $("mapping-form").onsubmit = event => {
   configure();
   save();
 };
-$("record").onchange = () => {
-  activeSheetData().current = Number($("record").value);
-  notice();
-  configure();
-  save();
-};
-$("new-record").onclick = () => {
-  const state = activeSheetData();
-  state.records.push(freshRecord(""));
-  state.current = state.records.length - 1;
-  notice();
-  configure();
-  save();
-  $("record-name").focus();
-  $("record-name").select();
-};
-$("record-name").oninput = () => {
-  record.label = $("record-name").value;
-  renderRecords(activeSheetData());
-  save();
-};
-for (const key of ["teacher", "group", "period"]) $(key).oninput = () => {
-  record[key] = $(key).value;
-  if (key !== "teacher") renderRecords(activeSheetData());
-  save();
-};
 for (const key of ["scale", "decimals"]) $(key).onchange = () => { record[key] = Number($(key).value); edited(); };
 $("add").onclick = () => {
   record.items.push({label: "Actividad " + (record.items.length + 1), weight: "0"});
@@ -730,6 +728,7 @@ $("add").onclick = () => {
   $("rubrics").lastElementChild.querySelector("input").select();
 };
 </script>
+<script src="periods.js"></script>
 <script src="attendance.js"></script>
 </body>
 </html>

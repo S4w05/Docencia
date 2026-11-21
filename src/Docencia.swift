@@ -5,6 +5,7 @@ import WebKit
 private let workbookType = UTType(filenameExtension: "xlsx") ?? .spreadsheet
 private let fileLimit = 35 * 1024 * 1024
 private let storagePreference = "registerFolder"
+private let semestersPreference = "semesterFolders"
 private struct CatalogEntry: Codable {
     let key: String
     let name: String
@@ -223,16 +224,21 @@ private final class Docencia: NSObject, NSApplicationDelegate, WKScriptMessageHa
             let key = request["key"] as? String ?? ""
             switch action {
             case "catalog":
-                replyHandler(try store.catalog(), nil)
+                replyHandler(try catalogWithSemesters(), nil)
             case "revealFolder":
                 guard store.accessible else { throw AppError.unavailableFolder }
                 NSWorkspace.shared.open(store.root)
                 replyHandler(true, nil)
             case "chooseFolder":
                 chooseFolder(replyHandler)
+            case "newAcademicTerm":
+                replyHandler(try startAcademicTerm(), nil)
+            case "openAcademicTerm":
+                guard semesterFolders.contains(key) else { throw AppError.invalidRequest }
+                replyHandler(try switchAcademicTerm(to: URL(fileURLWithPath: key, isDirectory: true)), nil)
             case "archive", "unarchive":
                 try store.setArchived(action == "archive", key: key)
-                replyHandler(try store.catalog(), nil)
+                replyHandler(try catalogWithSemesters(), nil)
             case "restore":
                 replyHandler(try store.restore(key), nil)
             case "load":
@@ -244,7 +250,7 @@ private final class Docencia: NSObject, NSApplicationDelegate, WKScriptMessageHa
             case "remember":
                 let (name, bytes) = try filePayload(request)
                 try store.register(key, name: name, bytes: bytes)
-                replyHandler(try store.catalog(), nil)
+                replyHandler(try catalogWithSemesters(), nil)
             case "choose":
                 chooseWorkbook(replyHandler)
             case "export":
@@ -273,6 +279,50 @@ private final class Docencia: NSObject, NSApplicationDelegate, WKScriptMessageHa
               let encoded = request["bytes"] as? String,
               let bytes = Data(base64Encoded: encoded) else { throw AppError.invalidWorkbook }
         return ((name as NSString).lastPathComponent, bytes)
+    }
+
+    private var semesterFolders: [String] {
+        UserDefaults.standard.stringArray(forKey: semestersPreference) ?? []
+    }
+
+    private func catalogWithSemesters() throws -> [String: Any] {
+        var catalog = try store.catalog()
+        catalog["semesters"] = semesterFolders.filter { $0 != store.root.path }
+        return catalog
+    }
+
+    private func startAcademicTerm() throws -> [String: Any] {
+        guard store.accessible else { throw AppError.unavailableFolder }
+        let parent = store.root.deletingLastPathComponent()
+        let name = "Docencia - Semestres"
+        let container = parent.lastPathComponent == name ? parent : parent.appendingPathComponent(name, isDirectory: true)
+        let date = DateFormatter()
+        date.locale = Locale(identifier: "en_US_POSIX")
+        date.dateFormat = "yyyy-MM-dd HHmmss"
+        let title = "Semestre " + date.string(from: Date())
+        let fm = FileManager.default
+        try fm.createDirectory(at: container, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        var folder = container.appendingPathComponent(title, isDirectory: true)
+        var suffix = 2
+        while fm.fileExists(atPath: folder.path) {
+            folder = container.appendingPathComponent(title + " (" + String(suffix) + ")", isDirectory: true)
+            suffix += 1
+        }
+        try fm.createDirectory(at: folder, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        return try switchAcademicTerm(to: folder)
+    }
+
+    private func switchAcademicTerm(to folder: URL) throws -> [String: Any] {
+        let next = RegisterStore(root: folder)
+        guard next.accessible else { throw AppError.unavailableFolder }
+        var catalog = try next.catalog()
+        var paths = semesterFolders.filter { $0 != next.root.path && $0 != store.root.path }
+        paths.insert(store.root.path, at: 0)
+        UserDefaults.standard.set(paths, forKey: semestersPreference)
+        UserDefaults.standard.set(next.root.path, forKey: storagePreference)
+        store = next
+        catalog["semesters"] = paths
+        return catalog
     }
 
     private func chooseWorkbook(_ reply: @escaping (Any?, String?) -> Void) {
@@ -321,10 +371,10 @@ private final class Docencia: NSObject, NSApplicationDelegate, WKScriptMessageHa
                     }) else { throw AppError.unavailableFolder }
                     next = recovered
                 }
-                let catalog = try next.catalog()
+                _ = try next.catalog()
                 UserDefaults.standard.set(next.root.path, forKey: storagePreference)
                 self.store = next
-                reply(catalog, nil)
+                reply(try self.catalogWithSemesters(), nil)
             } catch {
                 reply(nil, error.localizedDescription)
             }

@@ -57,6 +57,10 @@ function showCatalog(catalog, selected) {
   $("reveal-folder").disabled = !catalog.available;
   $("archived-controls").hidden = !catalog.archived.length;
   $("archived-lists").replaceChildren(...catalog.archived.map(item => new Option(item.name, item.key)));
+  const semesters = catalog.semesters ?? [];
+  $("saved-term-label").hidden = $("open-term").hidden = !semesters.length;
+  $("new-term").disabled = !catalog.available;
+  $("saved-terms").replaceChildren(...semesters.map(path => new Option(path, path)));
   if (!catalog.available) {
     $("storage").open = true;
     notice("La carpeta de datos no está disponible. Conecta el disco o selecciona la carpeta donde están tus listas.", true);
@@ -69,18 +73,20 @@ async function manageStorage(action) {
   $("workspace").inert = $("storage").inert = true;
   try {
     if (!(await flushPending())) throw Error("Hay cambios pendientes de guardar. Recupera primero el acceso a la carpeta de datos.");
-    const key = action === "archive" ? book?.key : $("archived-lists").value;
+    const key = action === "archive" ? book?.key : action === "openAcademicTerm" ? $("saved-terms").value : $("archived-lists").value;
     if (action === "archive" && !(await confirmAction("¿Archivar esta lista con todos sus registros? Podrás restaurarla desde Carpeta de datos."))) return;
+    if (action === "newAcademicTerm" && !(await confirmAction("¿Archivar el semestre abierto e iniciar otro vacío? Podrás volver a abrir el semestre anterior con todos sus datos."))) return;
     const catalog = await send(action, {key});
     if (!catalog) return;
-    if (action === "archive") {
+    if (["archive", "newAcademicTerm", "openAcademicTerm"].includes(action)) {
       book = sheet = data = record = null;
       students = [];
       rows = [];
       $("workspace").hidden = $("export-tools").hidden = $("archive-list").hidden = true;
       $("welcome").hidden = false;
       showCatalog(catalog);
-      if (catalog.lists.length) await openSaved(catalog.lists[0].key);
+      if (catalog.lists.length) await openSaved(catalog.active ?? catalog.lists[0].key);
+      if (action === "newAcademicTerm") notice("Semestre nuevo listo. Importa las listas que vas a usar.");
     } else if (action === "unarchive") {
       showCatalog(catalog, key);
       await openSaved(key);
@@ -101,6 +107,8 @@ $("reveal-folder").onclick = () => send("revealFolder").catch(error => notice(er
 $("choose-folder").onclick = () => manageStorage("chooseFolder");
 $("archive-list").onclick = () => manageStorage("archive");
 $("restore-list").onclick = () => manageStorage("unarchive");
+$("new-term").onclick = () => manageStorage("newAcademicTerm");
+$("open-term").onclick = () => manageStorage("openAcademicTerm");
 
 async function openSaved(key) {
   if (!key) return;
@@ -135,23 +143,14 @@ $("choose").onclick = async () => {
 };
 $("saved-lists").onchange = () => openSaved($("saved-lists").value);
 
-const periodNames = {"1": "Primer parcial", "2": "Segundo parcial", "3": "Tercer parcial"};
-const periodName = () => periodNames[record.period] ?? "";
-
-function renderRecords(state) {
-  $("record").replaceChildren(...state.records.map((r, index) =>
-    new Option([r.label.trim() || "Materia " + (index + 1), r.group?.trim(), periodNames[r.period]].filter(Boolean).join(" · "), index)));
-  $("record").value = state.current;
-}
-
 function switchView(view) {
-  const attendance = view === "attendance";
-  $("show-attendance").setAttribute("aria-pressed", String(attendance));
-  $("show-grades").setAttribute("aria-pressed", String(!attendance));
-  $("attendance").hidden = !attendance || !students.length;
-  $("evaluation").hidden = attendance || !students.length;
+  for (const [name, section] of [["attendance", "attendance"], ["grades", "evaluation"], ["summary", "summary"]]) {
+    $("show-" + name).setAttribute("aria-pressed", String(view === name));
+    $(section).hidden = view !== name || !record || !students.length;
+  }
+  if (!$("summary").hidden) showRules();
 }
-for (const view of ["attendance", "grades"]) {
+for (const view of ["attendance", "grades", "summary"]) {
   $("show-" + view).onclick = () => {
     data.view = view;
     switchView(view);
@@ -189,6 +188,7 @@ function renderAttendance(focus = null) {
   $("session-date").value = day.date;
   $("all-present").disabled = !day.date || todayMarks === students.length;
   $("add-session").disabled = record.sessions.length >= 16378;
+  $("remove-session").disabled = record.sessions.length === 1 && !day.date;
 
   const head = element("thead");
   const headings = element("tr");
@@ -245,6 +245,15 @@ function addSession() {
 
 $("sessions").onchange = () => { record.day = Number($("sessions").value); attendanceChanged(); };
 $("add-session").onclick = () => { addSession(); attendanceChanged(); $("session-date").focus(); };
+$("remove-session").onclick = async () => {
+  const current = session();
+  if (Object.keys(current.marks).length &&
+      !(await confirmAction("¿Quitar " + displayDate(current.date) + " y sus marcas de asistencia?"))) return;
+  record.sessions.splice(record.day, 1);
+  if (!record.sessions.length) record.sessions.push(newSession());
+  record.day = Math.min(record.day, record.sessions.length - 1);
+  attendanceChanged();
+};
 $("session-date").onchange = () => {
   const date = $("session-date").value;
   const current = session();
@@ -288,7 +297,7 @@ const attendanceColumns = Array.from({length: 23}, (_, index) => columnName(inde
 const existingValue = ref => sheet.value(ref) !== "" || Boolean(sheet.cells.get(ref) && child(sheet.cells.get(ref), "f"));
 const shortDate = date => displayDate(date).slice(0, 5);
 
-async function excelDateStyles(changes) {
+async function excelStyles(changes) {
   if (!book.styles) return null;
   const doc = await book.zip.xml(book.styles);
   const root = doc.documentElement;
@@ -299,7 +308,7 @@ async function excelDateStyles(changes) {
   const next = Math.max(163, ...[...formats.children].map(node => Number(node.getAttribute("numFmtId")))) + 1;
   const formatIds = new Map(), styleIds = new Map();
   return (formatCode, original = 0, compact = false) => {
-    if (!formatIds.has(formatCode)) {
+    if (formatCode && !formatIds.has(formatCode)) {
       const id = next + formatIds.size;
       const format = doc.createElementNS(ns, "numFmt");
       format.setAttribute("numFmtId", id);
@@ -312,13 +321,17 @@ async function excelDateStyles(changes) {
     if (!styleIds.has(key)) {
       const index = xfs.children.length;
       const xf = (xfs.children[original] ?? xfs.children[0]).cloneNode(true);
-      xf.setAttribute("numFmtId", formatIds.get(formatCode));
-      xf.setAttribute("applyNumberFormat", "1");
-      if (compact) {
+      if (formatCode) {
+        xf.setAttribute("numFmtId", formatIds.get(formatCode));
+        xf.setAttribute("applyNumberFormat", "1");
+      }
+      if (compact || !formatCode) {
         const alignment = child(xf, "alignment") ?? xf.insertBefore(doc.createElementNS(ns, "alignment"), xf.firstElementChild);
         alignment.setAttribute("horizontal", "center");
-        alignment.setAttribute("shrinkToFit", "1");
-        alignment.removeAttribute("wrapText");
+        if (compact) {
+          alignment.setAttribute("shrinkToFit", "1");
+          alignment.removeAttribute("wrapText");
+        }
         xf.setAttribute("applyAlignment", "1");
       }
       xfs.append(xf);
@@ -328,6 +341,10 @@ async function excelDateStyles(changes) {
     }
     return styleIds.get(key);
   };
+}
+
+function centerExcelCell(cell, style) {
+  if (cell && style) cell.setAttribute("s", style(null, Number(cell.getAttribute("s"))));
 }
 
 function excelDate(date) {
@@ -360,7 +377,9 @@ function writeInstitutionalAttendance(doc, days, dateStyle) {
   students.forEach(student => {
     const {presents, absences} = tallies(student, days);
     const ref = "AA" + student.row;
-    if (presents + absences || existingValue(ref)) writeCell(doc, ref, presents + absences ? absences : null);
+    if (presents + absences || existingValue(ref)) {
+      centerExcelCell(writeCell(doc, ref, presents + absences ? absences : null), dateStyle);
+    }
   });
 }
 
@@ -394,14 +413,17 @@ function extraAttendanceXML(ns, days, grades, dateStyle) {
       if (index === 4 && column >= 6 && dateStyle) {
         cell.setAttribute("s", dateStyle('dd"/"mm"/"yyyy'));
         append(cell, "v").textContent = excelDate(days[column - 6].date);
-      } else if (typeof value === "number") append(cell, "v").textContent = value;
+      } else if (typeof value === "number") {
+        if (column === 3 || column === 5) centerExcelCell(cell, dateStyle);
+        append(cell, "v").textContent = value;
+      }
       else {
         cell.setAttribute("t", "inlineStr");
         append(append(cell, "is"), "t").textContent = value;
       }
     });
   }
-  const group = record.group.trim() || $("group").placeholder;
+  const group = rosterGroup();
   addRow(1, ["", ["Asistencia diaria", record.label.trim() || "Materia", group, periodName()].filter(Boolean).join(" · ")]);
   addRow(2, ["", "P = presente · F = falta · Celda vacía = pendiente"]);
   addRow(4, ["No.", "Alumno", "Presentes", "Faltas", "Pendientes", "Calificación", ...days.map(day => displayDate(day.date))]);
@@ -415,7 +437,7 @@ function extraAttendanceXML(ns, days, grades, dateStyle) {
   return serializer.serializeToString(doc);
 }
 
-async function appendAttendance(changes, days, grades, dateStyle) {
+async function appendReportSheets(changes, reports) {
   const workbookPath = "xl/workbook.xml";
   const relsPath = "xl/_rels/workbook.xml.rels";
   const typesPath = "[Content_Types].xml";
@@ -424,33 +446,38 @@ async function appendAttendance(changes, days, grades, dateStyle) {
   const relationships = tags(rels, "Relationship");
   const relIDs = new Set(relationships.map(node => node.getAttribute("Id")));
   const sheetNames = new Set(sheets.map(node => node.getAttribute("name").toLowerCase()));
-  let index = 1, relId, path, relative;
-  do {
-    relId = "rId" + index;
-    relative = "worksheets/docencia-attendance-" + index + ".xml";
-    path = "xl/" + relative;
-    index++;
-  } while (relIDs.has(relId) || book.zip.entries.has(path));
-  let title = "Asistencia diaria";
-  for (let suffix = 2; sheetNames.has(title.toLowerCase()); suffix++) title = "Asistencia diaria " + suffix;
   const ns = workbook.documentElement.namespaceURI;
   const relAttr = sheets.flatMap(node => [...node.attributes]).find(attr => attr.localName === "id" && attr.namespaceURI);
-  const sheetNode = workbook.createElementNS(ns, "sheet");
-  sheetNode.setAttribute("name", title);
-  sheetNode.setAttribute("sheetId", String(Math.max(0, ...sheets.map(node => Number(node.getAttribute("sheetId")))) + 1));
-  sheetNode.setAttributeNS(relAttr.namespaceURI, relAttr.name, relId);
-  tags(workbook, "sheets")[0].append(sheetNode);
-  const relNode = rels.createElementNS(rels.documentElement.namespaceURI, "Relationship");
-  relNode.setAttribute("Id", relId);
-  relNode.setAttribute("Type", relAttr.namespaceURI + "/worksheet");
-  relNode.setAttribute("Target", relative);
-  rels.documentElement.append(relNode);
-  const typeNode = types.createElementNS(types.documentElement.namespaceURI, "Override");
-  typeNode.setAttribute("PartName", "/" + path);
-  typeNode.setAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml");
-  types.documentElement.append(typeNode);
+  let sheetId = Math.max(0, ...sheets.map(node => Number(node.getAttribute("sheetId"))));
+  let index = 1, relId, path, relative;
+  for (const [name, makeReport] of reports) {
+    do {
+      relId = "rId" + index;
+      relative = "worksheets/docencia-report-" + index + ".xml";
+      path = "xl/" + relative;
+      index++;
+    } while (relIDs.has(relId) || book.zip.entries.has(path));
+    let title = name;
+    for (let suffix = 2; sheetNames.has(title.toLowerCase()); suffix++) title = name + " " + suffix;
+    sheetNames.add(title.toLowerCase());
+    relIDs.add(relId);
+    const sheetNode = workbook.createElementNS(ns, "sheet");
+    sheetNode.setAttribute("name", title);
+    sheetNode.setAttribute("sheetId", String(++sheetId));
+    sheetNode.setAttributeNS(relAttr.namespaceURI, relAttr.name, relId);
+    tags(workbook, "sheets")[0].append(sheetNode);
+    const relNode = rels.createElementNS(rels.documentElement.namespaceURI, "Relationship");
+    relNode.setAttribute("Id", relId);
+    relNode.setAttribute("Type", relAttr.namespaceURI + "/worksheet");
+    relNode.setAttribute("Target", relative);
+    rels.documentElement.append(relNode);
+    const typeNode = types.createElementNS(types.documentElement.namespaceURI, "Override");
+    typeNode.setAttribute("PartName", "/" + path);
+    typeNode.setAttribute("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml");
+    types.documentElement.append(typeNode);
+    changes.set(path, makeReport(ns));
+  }
   for (const [name, doc] of [[workbookPath, workbook], [relsPath, rels], [typesPath, types]]) changes.set(name, serializer.serializeToString(doc));
-  changes.set(path, extraAttendanceXML(ns, days, grades, dateStyle));
 }
 
 const finalGrades = () => new Map(rows.filter(row => row.final !== null).map(row => [row.student.row, row.final]));
@@ -462,31 +489,41 @@ async function makeExcel() {
   const includeAttendance = days.length > 0;
   const changes = new Map();
   const doc = await book.zip.xml(sheet.entry.path);
-  const dateStyle = includeAttendance ? await excelDateStyles(changes) : null;
-  for (const student of students) if (student.ref && grades.has(student.row)) writeCell(doc, student.ref, grades.get(student.row));
+  const dateStyle = await excelStyles(changes);
+  for (const student of students) if (student.ref && grades.has(student.row)) {
+    centerExcelCell(writeCell(doc, student.ref, grades.get(student.row)), dateStyle);
+  }
   if (official && record.teacher.trim()) writeCell(doc, "B3", "MAESTRO: " + record.teacher.trim());
   if (official && record.label.trim()) writeCell(doc, "W3", record.label.trim());
-  if (official && record.group.trim()) writeCell(doc, "V2", record.group.trim());
-  if (official && periodName()) writeCell(doc, "B4", "PERIODO: " + periodName());
+  if (sheet.periodRef) writeCell(doc, sheet.periodRef, "PERIODO: " + periodName());
   if (includeAttendance && sheet.attendanceLayout) writeInstitutionalAttendance(doc, days, dateStyle);
   changes.set(sheet.entry.path, serializer.serializeToString(doc));
-  if (includeAttendance || !activeSheetData().mapping.grade) await appendAttendance(changes, days, grades, dateStyle);
+  const reports = [];
+  if (includeAttendance || !activeSheetData().mapping.grade) {
+    reports.push(["Asistencia diaria", ns => extraAttendanceXML(ns, days, grades, dateStyle)]);
+  }
+  if (subjectPeriods().length > 1) reports.push(["Recuento de materia", ns => summaryXML(ns, dateStyle)]);
+  if (reports.length) await appendReportSheets(changes, reports);
   return book.zip.withChanges(changes);
 }
 
 function exportName() {
   const safe = value => value.replace(/[\\/:*?"<>|]/g, "-").trim();
   const month = isoToday().slice(0, 7);
-  return [month, book.name.replace(/\.xlsx$/i, ""), record.label || "Materia", record.group, periodName()]
+  return [month, book.name.replace(/\.xlsx$/i, ""), record.label || "Materia", periodName()]
     .map(safe).filter(Boolean).join(" - ") + ".xlsx";
 }
 
-function renderPreview(detail) {
+function renderPreview(view) {
   const days = datedSessions();
   const grades = finalGrades();
   const headerStart = ["Alumno"];
   let headers, values;
-  if (detail) {
+  if (view === "summary") {
+    const summary = subjectSummary();
+    headers = summary.heading;
+    values = summary.values.map(row => row.map(value => typeof value === "number" ? rounded(value, 2) : value ?? ""));
+  } else if (view === "detail") {
     headers = [...headerStart, "Presentes", "Faltas", "Pendientes", "Calificación", ...days.map(day => displayDate(day.date))];
     values = students.map(student => {
       const {presents, absences, pending} = tallies(student, days);
@@ -509,13 +546,13 @@ function renderPreview(detail) {
     values = students.map(student => [student.name, grades.get(student.row) ?? student.original]);
   }
   $("preview-name").textContent = exportName();
-  $("preview-official").setAttribute("aria-pressed", String(!detail));
-  $("preview-detail").setAttribute("aria-pressed", String(detail));
+  for (const name of ["official", "detail", "summary"]) $("preview-" + name).setAttribute("aria-pressed", String(name === view));
   $("preview-detail").disabled = !days.length && Boolean(activeSheetData().mapping.grade);
-  const context = [record.label, record.group || $("group").placeholder, periodName()].filter(Boolean).join(" · ");
+  $("preview-summary").hidden = subjectPeriods().length < 2;
+  const context = [record.label, rosterGroup(), periodName()].filter(Boolean).join(" · ");
   $("preview-note").textContent = [context,
-    !detail && sheet.attendanceLayout ? "La hoja institucional muestra hasta 23 fechas. Total faltas incluye todas." : "",
-    "P = presente · F = falta"].filter(Boolean).join(" | ");
+    view === "official" && sheet.attendanceLayout ? "La hoja institucional muestra hasta 23 fechas. Total faltas incluye todas." : "",
+    view === "summary" ? "" : "P = presente · F = falta"].filter(Boolean).join(" | ");
   const head = element("thead");
   const tr = element("tr");
   tr.append(...headers.map(title => element("th", title)));
@@ -531,9 +568,11 @@ function renderPreview(detail) {
   $("preview-grid").replaceChildren(head, body);
 }
 
-$("preview-open").onclick = () => { renderPreview(!sheet.attendanceLayout && datedSessions().length > 0); $("preview").showModal(); };
-$("preview-official").onclick = () => renderPreview(false);
-$("preview-detail").onclick = () => renderPreview(true);
+$("preview-open").onclick = () => {
+  renderPreview(!sheet.attendanceLayout && datedSessions().length > 0 ? "detail" : "official");
+  $("preview").showModal();
+};
+for (const name of ["official", "detail", "summary"]) $("preview-" + name).onclick = () => renderPreview(name);
 
 async function exportFile() {
   if ($("export").disabled) return;

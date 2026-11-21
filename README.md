@@ -26,12 +26,20 @@ El argumento opcional puede ser `arm64`, `x86_64` o `universal`. El script firma
 
 En macOS, la app guarda las listas y sus borradores en `~/Library/Application Support/Docencia/Listas` por defecto. Puedes confirmar la ubicación o elegir otra desde **Carpeta de datos**.
 
+En **Carpeta de datos**, **Archivar semestre e iniciar otro** abre una carpeta vacía y conserva el semestre anterior. **Semestres guardados** permite volver a cualquiera de las carpetas que hayas usado como semestre.
+
 ## Importar una lista
 
 Usa un archivo `.xlsx` con una columna **Nombres**, **Alumno** o **Estudiantes**. Para encabezados distintos, elige la columna y el rango de filas desde **Ajustar columnas y filas**. En listas compatibles con una columna de calificación, la app puede escribir ahí los resultados. Las plantillas que usan el formato institucional reconocido también reciben fechas y marcas de asistencia en sus columnas y el total de faltas. El repositorio incluye el código y los recursos de la app.
 
+## Parciales y cierre semestral
+
+Añade los periodos que necesites dentro de cada materia. En **Recuento de materia**, define cuántos parciales están previstos y reparte 100 puntos entre parciales y semestral. La configuración inicial prevé tres parciales y asigna 50 puntos a cada bloque. Las notas se capturan sobre 100. Por ejemplo, con parciales de 80, 90 y 100 y un semestral de 92, el resultado es 45 + 46 = **91/100**.
+
+Cada periodo conserva su asistencia. La hoja institucional exporta la calificación y faltas del periodo seleccionado. La hoja **Recuento de materia** reúne las notas de todos los periodos, sus asistencias y la nota final cuando está completa.
+
 ## Código y licencia
 
-La interfaz y el procesamiento de Excel están en `src/index.html` y `src/attendance.js`. Para crear un cliente de escritorio en otro sistema, el puente de `src/Docencia.swift` sirve de referencia para implementar el almacenamiento y los diálogos de archivos de esa plataforma. La edición web puede usarse directamente y el cliente nativo se compila para macOS.
+La interfaz y el procesamiento de Excel están en `src/index.html`, `src/periods.js` y `src/attendance.js`. Para crear un cliente de escritorio en otro sistema, el puente de `src/Docencia.swift` sirve de referencia para implementar el almacenamiento y los diálogos de archivos de esa plataforma. La edición web puede usarse directamente y el cliente nativo se compila para macOS.
 
 Licencia MIT. Puedes usar, modificar, redistribuir y hacer fork del proyecto, conservando el aviso de licencia.

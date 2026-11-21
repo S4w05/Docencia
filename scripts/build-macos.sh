@@ -14,7 +14,7 @@ build="$root/build"
 bundle="$build/Docencia.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources" "$build/module-cache"
 cp "$src/Info.plist" "$bundle/Contents/Info.plist"
-for resource in index.html attendance.js attendance.css Docencia.png Docencia.icns; do
+for resource in index.html periods.js attendance.js attendance.css Docencia.png Docencia.icns; do
   cp "$src/$resource" "$bundle/Contents/Resources/$resource"
 done
 
